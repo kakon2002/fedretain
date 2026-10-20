@@ -1,0 +1,12 @@
+# Retention-fraction curve: a random subset of the same size as the low band at t_low 0.1 / 0.3 / 0.5,
+# results/band. The `band` stage trains, scores the clients and bootstraps against the FedAvg and low-subset
+# FedRetain runs of results/fix (merged in, nothing there is modified). t_low 0.3 gives the tag without _tl.
+extends: base.yaml
+out_rel: results/band
+methods: [fedretain]
+subset_rule: random
+variants:
+  - {t_low: 0.1}
+  - {t_low: 0.3}
+  - {t_low: 0.5}
+stages: [band]

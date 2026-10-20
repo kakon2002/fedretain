@@ -1,0 +1,32 @@
+# Shared defaults of every paper experiment. The Config dataclass keeps the legacy defaults (flat axis,
+# train-centre normalisation, warm_start 0) so old command lines behave as before; these are the paper's values.
+project: /content/drive/MyDrive/HistTTA
+patches_dir: /content/data/camelyon17/data/camelyon17_v1.0/patches
+
+rounds: 25
+local_epochs: 3
+lr: 0.001
+weight_decay: 0.0001
+optimizer: adamw
+batch_size: 256
+eval_batch_size: 512
+
+folds: [0, 1, 2]
+seeds: [42, 43]
+
+dct_axis: cin
+warm_start: 15
+t_low: 0.3
+t_high: 0.7
+subset_rule: low
+server_low: freeze
+retain_layers: all
+
+weighting: proportional
+norm_source: dataset_stats
+bn_source_heldout: client_val
+bn_source_local: client_train
+
+ft_epochs: 1
+n_boot: 1000
+boot_seed: 0

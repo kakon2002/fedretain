@@ -1,0 +1,13 @@
+# Which coefficients are kept does not matter: low / high / random DCT coefficients and random raw weights,
+# all at t_low 0.3 (same number of retained coefficients). The low variant is the main run in results/fix;
+# the others go to results/band and are bootstrapped against it.
+extends: base.yaml
+out_rel: results/band
+methods: [fedretain]
+t_low: 0.3
+variants:
+  - {subset_rule: low, out_rel: results/fix}
+  - {subset_rule: high}
+  - {subset_rule: random}
+  - {subset_rule: raw}
+stages: [band]

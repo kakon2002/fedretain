@@ -1,0 +1,14 @@
+# Cross-architecture run: ImageNet-pretrained MobileNetV3-Large, SGD (momentum 0.9) as in the paper,
+# depthwise kernels have no input-channel axis and are never retained. results/arch_mobilenetv3.
+extends: base.yaml
+out_rel: results/arch_mobilenetv3
+arch: mobilenetv3
+pretrained: true
+pointwise: false
+rounds: 20
+local_epochs: 1
+lr: 0.01
+optimizer: sgd
+seeds: [42]
+methods: [fedavg, fedretain, fedbn]
+stages: [arch]

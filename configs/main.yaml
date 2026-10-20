@@ -1,0 +1,7 @@
+# Main comparison (Table: baselines vs FedRetain), results/fix.
+# `pipeline` runs the stages in order: training sweep, FedAvg + local fine-tuning, per-client predictions,
+# patient-level bootstrap, tables. Every stage skips finished work.
+extends: base.yaml
+out_rel: results/fix
+methods: [fedavg, fedprox, fedbn, fedper, fedretain]
+stages: [sweep, finetune, localpred, bootstrap_runs, tables]

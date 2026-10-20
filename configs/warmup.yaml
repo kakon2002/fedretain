@@ -1,0 +1,9 @@
+# Warm-up ablation: FedRetain with 5 and 15 rounds of plain FedAvg before retention starts, results/fix.
+# The warm_start 15 variant is the main run (same tag, so it is skipped when main.yaml has produced it).
+extends: base.yaml
+out_rel: results/fix
+methods: [fedretain]
+variants:
+  - {warm_start: 5}
+  - {warm_start: 15}
+stages: [sweep, localpred, bootstrap_runs, tables]
