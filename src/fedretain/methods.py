@@ -83,7 +83,9 @@ class Method:
     name = "fedavg"
     prox_mu = 0.0
 
-    def __init__(self, cfg: Config, retention: Retention, conv_layers: Iterable[str], model: nn.Module) -> None:
+    def __init__(
+        self, cfg: Config, retention: Retention, conv_layers: Iterable[str], model: nn.Module
+    ) -> None:
         self.cfg = cfg
         self.retention = retention
         self.conv_layers = list(conv_layers)
@@ -104,8 +106,9 @@ class Method:
         """Record what the client keeps: its retained conv subset (every method, for fedfreq_eval)."""
         self.client_retained[c] = {k: self.retention.decompose(state[k])[0] for k in self.conv_layers}
 
-    def aggregate(self, global_state: StateDict, states: Sequence[StateDict], weights: Sequence[float],
-                  rnd: int) -> StateDict:
+    def aggregate(
+        self, global_state: StateDict, states: Sequence[StateDict], weights: Sequence[float], rnd: int
+    ) -> StateDict:
         """New global weights from the client states."""
         return weighted_average(states, weights)
 
@@ -142,7 +145,9 @@ class FedProx(Method):
 
     name = "fedprox"
 
-    def __init__(self, cfg: Config, retention: Retention, conv_layers: Iterable[str], model: nn.Module) -> None:
+    def __init__(
+        self, cfg: Config, retention: Retention, conv_layers: Iterable[str], model: nn.Module
+    ) -> None:
         super().__init__(cfg, retention, conv_layers, model)
         self.prox_mu = cfg.prox_mu
 
@@ -184,7 +189,7 @@ class FedPer4(PersonalKeyMethod):
 
 
 class FedRetain(Method):
-    """After warm_start FedAvg rounds each client keeps its retained conv subset; the server freezes its copy."""
+    """After warm_start FedAvg rounds each client keeps its conv subset; the server freezes its own copy."""
 
     name = "fedretain"
 
@@ -196,8 +201,9 @@ class FedRetain(Method):
             return self.retention.personalize(global_state, self.client_retained[c], self.conv_layers)
         return global_state
 
-    def aggregate(self, global_state: StateDict, states: Sequence[StateDict], weights: Sequence[float],
-                  rnd: int) -> StateDict:
+    def aggregate(
+        self, global_state: StateDict, states: Sequence[StateDict], weights: Sequence[float], rnd: int
+    ) -> StateDict:
         new_state = weighted_average(states, weights)
         if not self.retaining(rnd) or self.cfg.server_low != "freeze":
             return new_state
@@ -218,13 +224,18 @@ class FedRetain(Method):
 
 
 METHOD_CLASSES = {
-    "fedavg": FedAvg, "fedprox": FedProx, "fedbn": FedBN, "fedper": FedPer, "fedper4": FedPer4,
+    "fedavg": FedAvg,
+    "fedprox": FedProx,
+    "fedbn": FedBN,
+    "fedper": FedPer,
+    "fedper4": FedPer4,
     "fedretain": FedRetain,
 }
 
 
-def make_method(name: str, cfg: Config, retention: Retention, conv_layers: Iterable[str],
-                model: nn.Module) -> Method:
+def make_method(
+    name: str, cfg: Config, retention: Retention, conv_layers: Iterable[str], model: nn.Module
+) -> Method:
     """Instantiate the method class for a (possibly legacy) method name."""
     key = canonical_method(name)
     if key not in METHOD_CLASSES:

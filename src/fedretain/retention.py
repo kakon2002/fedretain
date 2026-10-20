@@ -80,8 +80,9 @@ def subset_masks(n: int, t_low: float, t_high: float, rule: str) -> tuple[torch.
 class Retention:
     """Which coefficients of every conv kernel a client keeps: transform, axis, thresholds and rule."""
 
-    def __init__(self, t_low: float = 0.3, t_high: float = 0.7, dct_axis: str = "flat",
-                 subset_rule: str = "low") -> None:
+    def __init__(
+        self, t_low: float = 0.3, t_high: float = 0.7, dct_axis: str = "flat", subset_rule: str = "low"
+    ) -> None:
         if dct_axis not in ("flat", "cin"):
             raise ValueError(dct_axis)
         if subset_rule not in SUBSET_RULES:
@@ -99,7 +100,7 @@ class Retention:
         return "identity" if self.subset_rule == "raw" else "dct"
 
     def coefficients(self, weight: torch.Tensor) -> torch.Tensor:
-        """Rows of coefficients: (c_out, c_in*k*k) for the flat axis, (c_out*k*k, c_in) for the channel axis."""
+        """Coefficient rows: (c_out, c_in*k*k) for the flat axis, (c_out*k*k, c_in) for the channel axis."""
         c_out, c_in, kh, kw = weight.shape
         if self.dct_axis == "flat":
             flat = weight.reshape(c_out, c_in * kh * kw)
@@ -148,8 +149,9 @@ class Retention:
         rows = shape[0] if self.dct_axis == "flat" else shape[0] * shape[2] * shape[3]
         return per_row[0] * rows, per_row[1] * rows, per_row[2] * rows
 
-    def personalize(self, global_state: StateDict, client_retained: StateDict,
-                    conv_layers: Iterable[str]) -> StateDict:
+    def personalize(
+        self, global_state: StateDict, client_retained: StateDict, conv_layers: Iterable[str]
+    ) -> StateDict:
         """Client's retained part plus the global shared parts for every conv layer."""
         state = OrderedDict((k, v.clone()) for k, v in global_state.items())
         for k in conv_layers:
@@ -187,10 +189,12 @@ def retained_count(state: StateDict, conv_layers: Iterable[str], retention: Rete
 
 def upload_size_mb(n_params: int, n_retained: int) -> tuple[float, float]:
     """(MB per client per round for a full upload, MB when the retained part stays local), fp32."""
-    return n_params * 4 / 2 ** 20, (n_params - n_retained) * 4 / 2 ** 20
+    return n_params * 4 / 2**20, (n_params - n_retained) * 4 / 2**20
 
 
-def retained_percent(state: StateDict, conv_layers: Iterable[str], retention: Retention) -> tuple[float, float]:
+def retained_percent(
+    state: StateDict, conv_layers: Iterable[str], retention: Retention
+) -> tuple[float, float]:
     """(% of conv coefficients kept local, % of all parameters kept local)."""
     counts = [retention.band_counts(tuple(state[k].shape)) for k in conv_layers]
     kept = sum(c[0] for c in counts)

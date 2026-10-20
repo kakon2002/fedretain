@@ -105,10 +105,15 @@ class Config:
     def validate(self) -> "Config":
         """Raise ValueError on an impossible combination of settings."""
         checks = (
-            ("dct_axis", DCT_AXES), ("subset_rule", SUBSET_RULES), ("arch", ARCHS),
-            ("optimizer", OPTIMIZERS), ("weighting", ("proportional", "equal")),
-            ("server_low", ("freeze", "avg")), ("retain_layers", ("all", "early", "late")),
-            ("norm_source", ("train_centers", "dataset_stats")), ("ft_source", ("runs", "checkpoints")),
+            ("dct_axis", DCT_AXES),
+            ("subset_rule", SUBSET_RULES),
+            ("arch", ARCHS),
+            ("optimizer", OPTIMIZERS),
+            ("weighting", ("proportional", "equal")),
+            ("server_low", ("freeze", "avg")),
+            ("retain_layers", ("all", "early", "late")),
+            ("norm_source", ("train_centers", "dataset_stats")),
+            ("ft_source", ("runs", "checkpoints")),
             ("bn_source_heldout", ("checkpoint", "client_val", "test_center", "notebook")),
             ("bn_source_local", ("client_train", "client_val")),
         )
@@ -121,7 +126,7 @@ class Config:
 
     @classmethod
     def from_dict(cls, values: dict[str, Any]) -> "Config":
-        """Build a Config from a dict, ignoring unknown keys (legacy result.json configs lack the new fields)."""
+        """Build a Config from a dict, ignoring unknown keys (legacy result configs lack the new fields)."""
         known = {f.name for f in fields(cls)}
         kept = {k: coerce(k, v) for k, v in values.items() if k in known}
         return cls(**kept)
@@ -189,7 +194,7 @@ class Experiment:
 
 
 def load_experiment(path: str | None, overrides: Sequence[str] = ()) -> Experiment:
-    """Build the Configs described by a YAML file (or the defaults) with `key=value` overrides applied last."""
+    """Configs described by a YAML file (or the defaults) with `key=value` overrides applied last."""
     raw = read_yaml(path) if path else {}
     stages = list(raw.get("stages", []) or [])
     variants = list(raw.get("variants", []) or [{}])

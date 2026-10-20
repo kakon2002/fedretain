@@ -42,7 +42,8 @@ class ResBlock(nn.Module):
         self.se = SEBlock(out_ch)
         if stride != 1 or in_ch != out_ch:
             self.shortcut = nn.Sequential(
-                nn.Conv2d(in_ch, out_ch, 3, stride=stride, padding=1, bias=False), nn.BatchNorm2d(out_ch))
+                nn.Conv2d(in_ch, out_ch, 3, stride=stride, padding=1, bias=False), nn.BatchNorm2d(out_ch)
+            )
         else:
             self.shortcut = nn.Identity()
 
@@ -58,7 +59,8 @@ class HistoFreqNet(nn.Module):
     def __init__(self, num_classes: int = 2) -> None:
         super().__init__()
         self.stem = nn.Sequential(
-            nn.Conv2d(3, 32, 3, stride=2, padding=1, bias=False), nn.BatchNorm2d(32), nn.SiLU(inplace=True))
+            nn.Conv2d(3, 32, 3, stride=2, padding=1, bias=False), nn.BatchNorm2d(32), nn.SiLU(inplace=True)
+        )
         self.stage1 = nn.Sequential(ResBlock(32, 64, 2), ResBlock(64, 64, 1))
         self.stage2 = nn.Sequential(ResBlock(64, 128, 2), ResBlock(128, 128, 1))
         self.stage3 = nn.Sequential(ResBlock(128, 192, 2), ResBlock(192, 192, 1))
@@ -86,6 +88,7 @@ def build_model(arch: str = "histofreqnet", pretrained: bool = True, num_classes
     if arch == "histofreqnet":
         return HistoFreqNet(num_classes)
     import torchvision
+
     weights = "IMAGENET1K_V1" if pretrained else None
     if arch == "mobilenetv3":
         model = torchvision.models.mobilenet_v3_large(weights=weights)

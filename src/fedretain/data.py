@@ -31,6 +31,7 @@ def maybe_mount_drive(cfg: Config) -> None:
     if cfg.project.startswith("/content/drive") and not os.path.isdir(cfg.project):
         try:
             from google.colab import drive  # type: ignore[import-not-found]
+
             drive.mount("/content/drive")
         except Exception:
             pass
@@ -38,8 +39,10 @@ def maybe_mount_drive(cfg: Config) -> None:
 
 def patch_path(row: pd.Series, patches_dir: str) -> str:
     """File name of one Camelyon17-WILDS patch, from its metadata row."""
-    name = (f"patch_patient_{int(row['patient']):03d}_node_{int(row['node'])}"
-            f"_x_{int(row['x_coord'])}_y_{int(row['y_coord'])}.png")
+    name = (
+        f"patch_patient_{int(row['patient']):03d}_node_{int(row['node'])}"
+        f"_x_{int(row['x_coord'])}_y_{int(row['y_coord'])}.png"
+    )
     return os.path.join(patches_dir, row["folder"], name)
 
 
@@ -92,9 +95,20 @@ class Split:
 class Loader:
     """Batches over uint8 images held on a storage device; normalisation and augmentation run on `device`."""
 
-    def __init__(self, images: torch.Tensor | np.ndarray, labels: np.ndarray, mean: list, std: list,
-                 batch_size: int, device: torch.device, shuffle: bool = False, augment: bool = False,
-                 drop_last: bool = False, order: np.ndarray | None = None, seed: int = 0) -> None:
+    def __init__(
+        self,
+        images: torch.Tensor | np.ndarray,
+        labels: np.ndarray,
+        mean: list,
+        std: list,
+        batch_size: int,
+        device: torch.device,
+        shuffle: bool = False,
+        augment: bool = False,
+        drop_last: bool = False,
+        order: np.ndarray | None = None,
+        seed: int = 0,
+    ) -> None:
         self.x = images if torch.is_tensor(images) else torch.from_numpy(images)
         self.y = torch.as_tensor(labels, dtype=torch.long, device=device)
         self.device = device
@@ -143,7 +157,7 @@ class Loader:
         idx = self._indices()
         n = len(self.y)
         for i in range(0, n, self.bs):
-            batch = idx[i:i + self.bs]
+            batch = idx[i : i + self.bs]
             if self.drop_last and len(batch) < self.bs:
                 break
             x = self.x[batch].to(self.device, non_blocking=True).permute(0, 3, 1, 2).float()
@@ -154,7 +168,7 @@ class Loader:
 
 
 class FoldData:
-    """Everything for one leave-one-centre-out fold, resident on `device` (or host RAM when it does not fit)."""
+    """Everything for one leave-one-centre-out fold, on `device` (or in host RAM when it does not fit)."""
 
     def __init__(self, cfg: Config, fold: int, device: torch.device, need_train: bool | str = True) -> None:
         """need_train: True = full training splits; 'calib' = a seeded BN-calibration sample; False = none."""
@@ -172,12 +186,14 @@ class FoldData:
         self.test_ds = Split(df[df["center"] == fold], cfg.patches_dir, f"test C{fold}")
         test_x = up(self.test_ds)
         self.test_loader = Loader(test_x, self.test_ds.labels, mean, std, ebs, device)
-        self.test_calib_loader = Loader(test_x, self.test_ds.labels, mean, std, ebs, device,
-                                        shuffle=True, seed=cfg.seed)
+        self.test_calib_loader = Loader(
+            test_x, self.test_ds.labels, mean, std, ebs, device, shuffle=True, seed=cfg.seed
+        )
         split_flag = self.test_ds.df["split"].values
         notebook_order = np.concatenate([np.where(split_flag == 0)[0], np.where(split_flag == 1)[0]])
-        self.test_notebook_loader = Loader(test_x, self.test_ds.labels, mean, std, 512, device,
-                                           order=notebook_order)
+        self.test_notebook_loader = Loader(
+            test_x, self.test_ds.labels, mean, std, 512, device, order=notebook_order
+        )
 
         self.client_train_ds: dict[int, Split] = {}
         self.client_val_ds: dict[int, Split] = {}
@@ -187,7 +203,9 @@ class FoldData:
         self.client_bn_loader: dict[int, Loader | None] = {}
         val_x, val_y = [], []
         for c in self.train_centers:
-            self.client_val_ds[c] = Split(df[(df["center"] == c) & (df["split"] == 1)], cfg.patches_dir, f"val C{c}")
+            self.client_val_ds[c] = Split(
+                df[(df["center"] == c) & (df["split"] == 1)], cfg.patches_dir, f"val C{c}"
+            )
             x = up(self.client_val_ds[c])
             val_x.append(x)
             val_y.append(self.client_val_ds[c].labels)
@@ -196,22 +214,49 @@ class FoldData:
             if need_train == "calib":
                 train_df = train_df.sample(n=min(cfg.bn_calib_patches, len(train_df)), random_state=cfg.seed)
                 self.client_calib_ds[c] = Split(train_df, cfg.patches_dir, f"train-sample C{c}")
-                self.client_bn_loader[c] = Loader(up(self.client_calib_ds[c]), self.client_calib_ds[c].labels,
-                                                  mean, std, ebs, device, shuffle=True, seed=cfg.seed)
+                self.client_bn_loader[c] = Loader(
+                    up(self.client_calib_ds[c]),
+                    self.client_calib_ds[c].labels,
+                    mean,
+                    std,
+                    ebs,
+                    device,
+                    shuffle=True,
+                    seed=cfg.seed,
+                )
             elif need_train:
                 if cfg.train_cap > 0:
                     train_df = train_df.sample(n=min(cfg.train_cap, len(train_df)), random_state=cfg.seed)
                 self.client_train_ds[c] = Split(train_df, cfg.patches_dir, f"train C{c}")
                 train_x = up(self.client_train_ds[c])
                 self.client_train_ds[c].images = None
-                self.client_train_loader[c] = Loader(train_x, self.client_train_ds[c].labels, mean, std, bs, device,
-                                                     shuffle=True, augment=True, drop_last=True, seed=cfg.seed + c)
-                self.client_bn_loader[c] = Loader(train_x, self.client_train_ds[c].labels, mean, std, ebs, device,
-                                                  shuffle=True, seed=cfg.seed)
+                self.client_train_loader[c] = Loader(
+                    train_x,
+                    self.client_train_ds[c].labels,
+                    mean,
+                    std,
+                    bs,
+                    device,
+                    shuffle=True,
+                    augment=True,
+                    drop_last=True,
+                    seed=cfg.seed + c,
+                )
+                self.client_bn_loader[c] = Loader(
+                    train_x,
+                    self.client_train_ds[c].labels,
+                    mean,
+                    std,
+                    ebs,
+                    device,
+                    shuffle=True,
+                    seed=cfg.seed,
+                )
             else:
                 self.client_bn_loader[c] = None
-        self.pooled_val_loader = Loader(torch.cat(val_x), np.concatenate(val_y), mean, std, ebs, device,
-                                        shuffle=True, seed=cfg.seed)
+        self.pooled_val_loader = Loader(
+            torch.cat(val_x), np.concatenate(val_y), mean, std, ebs, device, shuffle=True, seed=cfg.seed
+        )
 
         self.mean, self.std = mean, std
         if cfg.norm_source == "train_centers":
@@ -225,7 +270,7 @@ class FoldData:
         need_gb = (2.0 if need_train is True else 0.3) * 4 + 2.5
         if device.type != "cuda":
             return torch.device("cpu")
-        free_gb = torch.cuda.mem_get_info()[0] / 1024 ** 3
+        free_gb = torch.cuda.mem_get_info()[0] / 1024**3
         if free_gb > need_gb:
             return device
         print(f"  GPU has {free_gb:.1f} GB free, need ~{need_gb:.0f}: patches stay in host RAM", flush=True)
@@ -245,20 +290,27 @@ class FoldData:
         for x in sources.values():
             idx = torch.randperm(len(x), generator=gen)[:20000]
             for j in range(0, len(idx), 1000):
-                v = x[idx[j:j + 1000].to(x.device)].to(device).float().div_(255.0)
+                v = x[idx[j : j + 1000].to(x.device)].to(device).float().div_(255.0)
                 total += v.sum(dim=(0, 1, 2)).double().cpu()
-                total_sq += (v ** 2).sum(dim=(0, 1, 2)).double().cpu()
+                total_sq += (v**2).sum(dim=(0, 1, 2)).double().cpu()
                 count += v.shape[0] * PATCH_SIZE * PATCH_SIZE
         self.mean = (total / count).tolist()
         self.std = (total_sq / count - (total / count) ** 2).sqrt().tolist()
         for loader in self.all_loaders():
             loader.set_norm(self.mean, self.std)
-        print(f"  norm (train centres only): mean={np.round(self.mean, 4).tolist()} "
-              f"std={np.round(self.std, 4).tolist()}")
+        print(
+            f"  norm (train centres only): mean={np.round(self.mean, 4).tolist()} "
+            f"std={np.round(self.std, 4).tolist()}"
+        )
 
     def all_loaders(self) -> list[Loader]:
         """Every loader of the fold (used to update the normalisation in place)."""
-        loaders = [self.test_loader, self.test_calib_loader, self.test_notebook_loader, self.pooled_val_loader]
+        loaders = [
+            self.test_loader,
+            self.test_calib_loader,
+            self.test_notebook_loader,
+            self.pooled_val_loader,
+        ]
         loaders += list(self.client_val_loader.values()) + list(self.client_train_loader.values())
         loaders += [ld for ld in self.client_bn_loader.values() if ld is not None]
         return loaders

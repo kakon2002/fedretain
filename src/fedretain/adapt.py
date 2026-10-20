@@ -21,8 +21,9 @@ def autocast_ctx(device: torch.device) -> Any:
 
 
 @torch.no_grad()
-def calibrate_bn(model: nn.Module, loader: Loader | None, device: torch.device, max_batches: int = 0,
-                 ema: bool = False) -> None:
+def calibrate_bn(
+    model: nn.Module, loader: Loader | None, device: torch.device, max_batches: int = 0, ema: bool = False
+) -> None:
     """Reset BN running statistics and re-estimate them over `loader` (cumulative average, order-free)."""
     if loader is None:
         return
@@ -58,8 +59,14 @@ def predict(model: nn.Module, loader: Loader, device: torch.device) -> tuple[np.
     return np.concatenate(probs), np.concatenate(labels)
 
 
-def evaluate(model: nn.Module, loader: Loader, device: torch.device, bn: tuple[Loader | None, bool],
-             cfg: Config, max_batches: int | None = None) -> tuple[dict, np.ndarray, np.ndarray]:
+def evaluate(
+    model: nn.Module,
+    loader: Loader,
+    device: torch.device,
+    bn: tuple[Loader | None, bool],
+    cfg: Config,
+    max_batches: int | None = None,
+) -> tuple[dict, np.ndarray, np.ndarray]:
     """Re-estimate BN on bn=(loader, ema), then score `loader`; max_batches caps the calibration pass."""
     cap = cfg.bn_max_batches if max_batches is None else max_batches
     calibrate_bn(model, bn[0], device, cap, bn[1])

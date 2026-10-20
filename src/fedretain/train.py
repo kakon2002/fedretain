@@ -54,9 +54,17 @@ def to_device(state: StateDict, device: torch.device) -> dict:
     return {k: v.to(device) for k, v in state.items()}
 
 
-def local_train(model: nn.Module, loader: Loader, epochs: int, lr: float, weight_decay: float,
-                class_weights: Sequence[float], device: torch.device, prox_mu: float = 0.0,
-                optimizer: str = "adamw") -> StateDict:
+def local_train(
+    model: nn.Module,
+    loader: Loader,
+    epochs: int,
+    lr: float,
+    weight_decay: float,
+    class_weights: Sequence[float],
+    device: torch.device,
+    prox_mu: float = 0.0,
+    optimizer: str = "adamw",
+) -> StateDict:
     """Train in place for `epochs` passes; prox_mu > 0 adds FedProx's (mu/2)||w - w_entry||^2 term."""
     model.train()
     if optimizer == "adamw":
@@ -130,7 +138,9 @@ def subset_from_name(name: str) -> str:
 def run_config(cfg: Config, name: str, stored: dict) -> Config:
     """cfg with the retention settings of a finished run, taken from its stored config or its name."""
     return cfg.updated(
-        t_low=stored["t_low"], t_high=stored["t_high"], dct_axis=stored["dct_axis"],
+        t_low=stored["t_low"],
+        t_high=stored["t_high"],
+        dct_axis=stored["dct_axis"],
         retain_layers=stored.get("retain_layers", "all"),
         subset_rule=stored.get("subset_rule", subset_from_name(name)),
         pointwise=stored.get("pointwise", name.endswith("_pw") or "_pw_" in name),
@@ -159,12 +169,15 @@ def retained_conv_layers(state: StateDict, cfg: Config) -> list[str]:
     return select_layers(conv_layer_names(state, cfg.pointwise), cfg.retain_layers)
 
 
-def _round_evaluation(model: nn.Module, fd: FoldData, cfg: Config, device: torch.device, method: Method,
-                      global_state: StateDict) -> tuple[dict, dict]:
+def _round_evaluation(
+    model: nn.Module, fd: FoldData, cfg: Config, device: torch.device, method: Method, global_state: StateDict
+) -> tuple[dict, dict]:
     """Held-out metrics under the test-centre protocol and per-client own-centre metrics (capped BN pass)."""
     cap = cfg.bn_max_batches_round
     model.load_state_dict(to_device(global_state, device))
-    heldout, _, _ = evaluate(model, fd.test_loader, device, fd.bn_heldout("test_center"), cfg, max_batches=cap)
+    heldout, _, _ = evaluate(
+        model, fd.test_loader, device, fd.bn_heldout("test_center"), cfg, max_batches=cap
+    )
     local = {}
     for c in fd.train_centers:
         model.load_state_dict(to_device(method.eval_state(c, global_state), device))
@@ -174,11 +187,28 @@ def _round_evaluation(model: nn.Module, fd: FoldData, cfg: Config, device: torch
     return heldout, local
 
 
-def _final_result(model: nn.Module, fd: FoldData, cfg: Config, device: torch.device, method: Method,
-                  method_name: str, fold: int, seed: int, global_state: StateDict, history: list,
-                  best_sel: float, run_dir: str) -> dict:
+def _final_result(
+    model: nn.Module,
+    fd: FoldData,
+    cfg: Config,
+    device: torch.device,
+    method: Method,
+    method_name: str,
+    fold: int,
+    seed: int,
+    global_state: StateDict,
+    history: list,
+    best_sel: float,
+    run_dir: str,
+) -> dict:
     """Full held-out metrics for the last and val-selected checkpoints, plus the own-centre summaries."""
-    final: dict = {"method": method_name, "fold": fold, "seed": seed, "config": cfg.to_dict(), "history": history}
+    final: dict = {
+        "method": method_name,
+        "fold": fold,
+        "seed": seed,
+        "config": cfg.to_dict(),
+        "history": history,
+    }
     best_state = load_pt(os.path.join(run_dir, "global_best_by_val.pt"))
     for name, state in (("last", global_state), ("best_by_val", best_state)):
         if state is None:
@@ -189,8 +219,13 @@ def _final_result(model: nn.Module, fd: FoldData, cfg: Config, device: torch.dev
             final[f"heldout_{name}_{src}"] = metrics
             if src == "test_center":
                 final[f"heldout_{name}"] = metrics
-            np.savez_compressed(os.path.join(run_dir, f"pred_heldout_{name}_{src}.npz"), probs=probs,
-                                labels=labels, patient=fd.test_ds.patient, node=fd.test_ds.node)
+            np.savez_compressed(
+                os.path.join(run_dir, f"pred_heldout_{name}_{src}.npz"),
+                probs=probs,
+                labels=labels,
+                patient=fd.test_ds.patient,
+                node=fd.test_ds.node,
+            )
     final["local_last"] = history[-1]["local"]
     final["local_mean_acc_last"] = history[-1]["local_mean_acc"]
     final["local_mean_acc_best"] = best_sel
@@ -244,18 +279,35 @@ def stage_run(cfg: Config, method_name: str, fold: int, seed: int, fd: FoldData 
         retaining = method.retaining(rnd)
         for c in clients:
             model.load_state_dict(to_device(method.client_start(c, rnd, global_state), device))
-            states.append(local_train(model, fd.client_train_loader[c], cfg.local_epochs, cfg.lr,
-                                      cfg.weight_decay, fd.class_weights, device, prox_mu=method.prox_mu,
-                                      optimizer=cfg.optimizer))
+            states.append(
+                local_train(
+                    model,
+                    fd.client_train_loader[c],
+                    cfg.local_epochs,
+                    cfg.lr,
+                    cfg.weight_decay,
+                    fd.class_weights,
+                    device,
+                    prox_mu=method.prox_mu,
+                    optimizer=cfg.optimizer,
+                )
+            )
             weights.append(len(fd.client_train_ds[c]) if cfg.weighting == "proportional" else 1.0)
         for c, state in zip(clients, states):
             method.on_client_done(c, state)
         global_state = method.aggregate(global_state, states, weights, rnd)
         heldout, local = _round_evaluation(model, fd, cfg, device, method, global_state)
         sel = float(np.mean([v["accuracy"] for v in local.values()]))
-        history.append({"round": rnd + 1, "heldout": {k: heldout[k] for k in HISTORY_HELDOUT_KEYS},
-                        "local": local, "local_mean_acc": sel, "time_s": time.time() - t0,
-                        "retaining": retaining})
+        history.append(
+            {
+                "round": rnd + 1,
+                "heldout": {k: heldout[k] for k in HISTORY_HELDOUT_KEYS},
+                "local": local,
+                "local_mean_acc": sel,
+                "time_s": time.time() - t0,
+                "retaining": retaining,
+            }
+        )
         improved = sel > best_sel
         if improved:
             best_sel = sel
@@ -263,15 +315,32 @@ def stage_run(cfg: Config, method_name: str, fold: int, seed: int, fd: FoldData 
             method.save(run_dir, best=True)
         torch.save(global_state, os.path.join(run_dir, "global_last.pt"))
         method.save(run_dir)
-        save_json({"completed_rounds": rnd + 1, "history": history, "best_sel": best_sel,
-                   "config": cfg.to_dict(), "method": method_name, "fold": fold, "seed": seed}, progress_path)
+        save_json(
+            {
+                "completed_rounds": rnd + 1,
+                "history": history,
+                "best_sel": best_sel,
+                "config": cfg.to_dict(),
+                "method": method_name,
+                "fold": fold,
+                "seed": seed,
+            },
+            progress_path,
+        )
         per_client = " ".join(f"C{c}:{local[str(c)]['accuracy']:.2f}" for c in clients)
-        print(f"  {tag} R{rnd + 1:2d}/{cfg.rounds} heldout acc={heldout['accuracy']:.4f} "
-              f"auc={heldout['auc']:.4f} | local {sel:.4f} {per_client} | {time.time() - t0:.0f}s"
-              + (" *" if improved else "") + (" [retain]" if retaining else ""), flush=True)
-    final = _final_result(model, fd, cfg, device, method, method_name, fold, seed, global_state, history,
-                          best_sel, run_dir)
+        print(
+            f"  {tag} R{rnd + 1:2d}/{cfg.rounds} heldout acc={heldout['accuracy']:.4f} "
+            f"auc={heldout['auc']:.4f} | local {sel:.4f} {per_client} | {time.time() - t0:.0f}s"
+            + (" *" if improved else "")
+            + (" [retain]" if retaining else ""),
+            flush=True,
+        )
+    final = _final_result(
+        model, fd, cfg, device, method, method_name, fold, seed, global_state, history, best_sel, run_dir
+    )
     save_json(final, result_path)
-    print(f"  done {tag}: heldout(last) acc={final['heldout_last']['accuracy']:.4f} "
-          f"auc={final['heldout_last']['auc']:.4f} local(last)={final['local_mean_acc_last']:.4f}")
+    print(
+        f"  done {tag}: heldout(last) acc={final['heldout_last']['accuracy']:.4f} "
+        f"auc={final['heldout_last']['auc']:.4f} local(last)={final['local_mean_acc_last']:.4f}"
+    )
     return final

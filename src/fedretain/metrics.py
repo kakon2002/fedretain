@@ -4,8 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 from scipy.stats import rankdata
-from sklearn.metrics import (average_precision_score, brier_score_loss, confusion_matrix, f1_score,
-                             precision_score, roc_auc_score)
+from sklearn.metrics import (
+    average_precision_score,
+    brier_score_loss,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    roc_auc_score,
+)
 
 
 def fast_auc(labels: np.ndarray, probs: np.ndarray) -> float:
@@ -57,5 +63,8 @@ def metrics_from(probs: np.ndarray, labels: np.ndarray, n_bins: int = 10) -> dic
         "mce": mce,
         "bin_counts": counts,
         "cost_error_10to1": float((10 * fn + fp) / len(labels)),
-        "tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp),
+        "tn": int(tn),
+        "fp": int(fp),
+        "fn": int(fn),
+        "tp": int(tp),
     }
