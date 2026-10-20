@@ -1,0 +1,21 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cpu-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU torch
+        run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+      - name: Install package
+        run: pip install -e ".[test]"
+      - name: Run the test suite (equivalence with the archived scripts, every stage)
+        run: python -m pytest -x -q tests
