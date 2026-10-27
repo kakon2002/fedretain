@@ -1,5 +1,5 @@
 # Development fold: centre 3 held out (never one of the paper's test centres 0, 1, 2), one seed, results/dev.
-# Used to choose the warm-up length and the retained fraction before touching the test folds.
+# Every configuration tried, in the order it was run (Table 2 of the paper). warm_start 15 was selected.
 extends: base.yaml
 out_rel: results/dev
 folds: [3]
@@ -7,6 +7,8 @@ seeds: [42]
 methods: [fedavg, fedretain]
 variants:
   - {warm_start: 5}
-  - {warm_start: 10}
   - {warm_start: 15}
-stages: [sweep, localpred, bootstrap_runs, tables]
+  - {warm_start: 5, t_low: 0.1}
+  - {warm_start: 5, server_low: avg}
+  - {warm_start: 5, retain_layers: early}
+stages: [sweep, tables]

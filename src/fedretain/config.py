@@ -21,7 +21,7 @@ class Config:
     """All settings of one experiment; every legacy field keeps its legacy name and default."""
 
     project: str = "/content/drive/MyDrive/HistTTA"
-    patches_dir: str = "/content/data/camelyon17/data/camelyon17_v1.0/patches"
+    patches_dir: str = "/content/data/camelyon17/data/patches"
     metadata_rel: str = "metadata/metadata_enhanced.csv"
     ckpt_rel: str = "checkpoints/camelyon17_histofreqnet"
     results_rel: str = "results"

@@ -12,3 +12,7 @@ optimizer: sgd
 seeds: [42]
 methods: [fedavg, fedretain, fedbn]
 stages: [arch]
+
+# NOTE: not reported in the paper. With --pointwise the implementation treats 1x1 kernels as non-decomposable
+# inside decompose(), so on this backbone almost nothing is retained while the printed saving counts the 1x1
+# layers. Kept for the record; fix decompose() before drawing conclusions from this config.

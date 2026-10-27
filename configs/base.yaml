@@ -1,7 +1,7 @@
 # Shared defaults of every paper experiment. The Config dataclass keeps the legacy defaults (flat axis,
 # train-centre normalisation, warm_start 0) so old command lines behave as before; these are the paper's values.
 project: /content/drive/MyDrive/HistTTA
-patches_dir: /content/data/camelyon17/data/camelyon17_v1.0/patches
+patches_dir: /content/data/camelyon17/data/patches
 
 rounds: 25
 local_epochs: 3
